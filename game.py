@@ -2,6 +2,14 @@ import pygame
 from random import randint, choice
 import math
 
+# Initialize Pygame
+pygame.init()
+screen = pygame.display.set_mode((650, 500))
+pygame.display.set_caption("Space_Parking")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("arial", 20)
+big_font = pygame.font.SysFont("arial", 40)
+
 # Helper functions
 def lerp(a, b, t):
     return ((1 - t)* a + (t*b))
@@ -132,12 +140,10 @@ def checkCollision(line: Line, player: Rocket):
         return False
             
         
-            
-        
-pygame.init()
-screen = pygame.display.set_mode((650, 500))
-clock = pygame.time.Clock()
+
 running = True
+end = False
+win = False
 
 player = Rocket(pygame.Vector2(250, 0), 0, pygame.Vector2(0, 20))
 lines = []
@@ -154,14 +160,27 @@ safe = randint(0, len(lines) - 1)
 
 # if safe < len(lines) - 1:
 #     lines[safe + 1].start.y =lines[safe].end.y
+
+def draw_gui():
+    fuel_text = font.render(f"Fuel: {int(player.fuel * 100)}%", True, (255, 255, 255))
+    screen.blit(fuel_text, (20, 20))
+    # display fuel
+    pygame.draw.rect(screen, "black", pygame.Rect(590, 20, 25, 150))
+    pygame.draw.polygon(screen, "green", ([590, 170], [615, 170], [615, 20 + (1 - player.fuel) * 150], [590, 20 + (1 - player.fuel) * 150]))
     
+    
+def draw_end_screen(win):
+    msg = "You Win! Successful Landing" if win else "You Crashed! Try Again"
+    text_surface = big_font.render(msg, True, (0, 255, 0) if win else (255, 0, 0))
+    screen.blit(text_surface, (300 - text_surface.get_width() // 2, 250))
+
 while running:
     deltaTime = clock.tick(60) / 1000 # limit fps to 60 and get elapsed time since last frame in seconds
     
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-            
+          
     screen.fill("skyblue")
     
     
@@ -186,29 +205,30 @@ while running:
             dot = player.vel - (pygame.Vector2.dot(player.vel, line.normal) * line.normal)
             player.vel -= friction_constant * dot * deltaTime
             
-
-            
                 
             if line != lines[safe]:
-                print("Crashed")
+                end = True
+                win = False
             else:
             # check if win
                 perpVel = pygame.Vector2.dot(player.vel, line.normal) * line.normal
                 magnitude = perpVel.length()
                 if magnitude > 8e-15:
-                    print("hit too hard")
+                    end = True
+                    win = False
+                elif not end:
+                    end = True
+                    win = True
                 
         #pygame.draw.line(screen, "blue", line.GetMidpoint(), line.GetMidpoint() + (line.normal * 20))
         pygame.draw.polygon(screen, "white", [line.start, line.end, (line.end.x, 500), (line.start.x, 500)])
         if line == lines[safe]:
             pygame.draw.line(screen, "green", line.start, line.end, 4)
-            
-
-    # display fuel
-    pygame.draw.rect(screen, "black", pygame.Rect(590, 20, 25, 150))
-    pygame.draw.polygon(screen, "green", ([590, 170], [615, 170], [615, 20 + (1 - player.fuel) * 150], [590, 20 + (1 - player.fuel) * 150]))
-        
+    draw_gui()
     
+    if end:
+        draw_end_screen(win)
+            
     pygame.display.flip() #double buffer rendering, render back buffer
     
 pygame.quit()
