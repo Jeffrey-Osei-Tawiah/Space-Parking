@@ -6,6 +6,9 @@ import math
 def lerp(a, b, t):
     return ((1 - t)* a + (t*b))
 
+def pointCircle(x, y, cx, cy, r):
+    return ((x-cx)**2 + (y-cy)**2 <= r ** 2)
+
 class Line:
     def __init__(self, start: pygame.Vector2, end: pygame.Vector2):
         self.start = start
@@ -26,6 +29,7 @@ class Rocket:
         self.pos = position
         self.rot = rotation
         self.vel = velocity
+        self.acc = pygame.Vector2(0, 150)
         
         self.radius = 20
         self.fuel = 1
@@ -34,7 +38,7 @@ class Rocket:
         
         self.rot = lerp(self.rot, 0, 0.99 * deltaTime)
         self.HandleInput(deltaTime)
-        self.vel += pygame.Vector2(0, 150) * deltaTime
+        self.vel += self.acc * deltaTime
         self.pos += self.vel * deltaTime
         
             
@@ -50,6 +54,37 @@ class Rocket:
             
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.rot = lerp(self.rot, -math.pi / 3, 0.99 * deltaTime)
+            
+         
+def linepoint(line: Line, point: pygame.Vector2):
+    d1 = point.distance_to(line.start)
+    d2 = point.distance_to(line.end)
+    
+    lineLen = (line.end - line.start).length()
+    buffer = 0.1
+    if (d1 + d2) >= lineLen - buffer and (d1 + d2) <= lineLen - buffer:
+        return True
+    return False
+
+def checkCollision(line: Line, player: Rocket):
+    inside1 = pointCircle(line.start.x, line.start.y, player.pos.x, player.pos.y, player.radius)
+    inside2 = pointCircle(line.end.x, line.end.y, player.pos.x, player.pos.y, player.radius)
+    
+    if inside1 or inside2:
+        return True
+    
+    len_sq = (line.end - line.start).length_squared()
+    dot = pygame.Vector2.dot(player.pos - line.start, line.end-line.start) / len_sq
+    closest = line.start + (dot * (line.end - line.start))
+    
+    onSegment = linepoint(line, closest)
+    if not onSegment:
+        return False
+    
+    distance = (closest - player.pos).length_squared()
+    if distance <= player.radius**2:
+        return True
+    return False
             
         
             
@@ -83,7 +118,6 @@ while running:
             running = False
             
     screen.fill("cyan")
-    player.update(deltaTime)
     
     # calculate position of propeller
     propellerPos = pygame.Vector2(0, player.radius)
@@ -93,12 +127,22 @@ while running:
     pygame.draw.circle(screen, "red", pygame.Vector2(player.pos + propellerPos), player.radius / 2)
     
     for line in lines:
+        
+        if checkCollision(line, player):
+            dot = pygame.Vector2.dot(player.vel, line.normal) * line.normal  
+            perp = player.vel - dot
+            player.vel = perp
+                
+            print("Collision detected")
+            if line == lines[safe]:
+                print("You win")
         #pygame.draw.line(screen, "blue", line.GetMidpoint(), line.GetMidpoint() + (line.normal * 20))
         pygame.draw.polygon(screen, "white", [line.start, line.end, (line.end.x, 500), (line.start.x, 500)])
         if line == lines[safe]:
             pygame.draw.line(screen, "green", line.start, line.end, 4)
             
     
+    player.update(deltaTime)
     # display fuel
     pygame.draw.rect(screen, "black", pygame.Rect(590, 20, 25, 150))
     pygame.draw.polygon(screen, "green", ([590, 170], [615, 170], [615, 20 + (1 - player.fuel) * 150], [590, 20 + (1 - player.fuel) * 150]))
