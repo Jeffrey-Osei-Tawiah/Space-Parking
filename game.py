@@ -37,12 +37,18 @@ class Rocket:
         self.radius = 20
         self.fuel = 1
         self.grounded = False
+        self.hasProppelled = False
         
     def update(self, deltaTime: float):
+        self.hasProppelled = False
         self.rot = lerp(self.rot, 0, 0.99 * deltaTime)
         self.HandleInput(deltaTime)
         self.vel += self.acc * deltaTime
         self.pos += self.vel * deltaTime
+        
+        if self.grounded:
+            player.vel = lerp(player.vel, pygame.Vector2(0, 0), 0.99 * deltaTime)
+        
         
 
             
@@ -69,8 +75,10 @@ class Rocket:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             if self.fuel > 0:
+                self.hasProppelled = True
                 self.fuel -= 0.15 * deltaTime
                 self.vel += -pygame.Vector2(math.sin(self.rot), math.cos(self.rot)) * 200 * deltaTime
+                
                 
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.rot = lerp(self.rot, math.pi / 3, 0.99 * deltaTime)
@@ -158,11 +166,12 @@ while running:
     
     
     # calculate position of propeller
-    propellerPos = pygame.Vector2(0, player.radius)
-    propellerPos.x = propellerPos.y * math.sin(player.rot)
-    propellerPos.y = propellerPos.y * math.cos(player.rot)
-    pygame.draw.circle(screen, (217,113,22), player.pos, player.radius)
-    pygame.draw.circle(screen, "red", pygame.Vector2(player.pos + propellerPos), player.radius / 2)
+    pygame.draw.circle(screen, (217,113,22), player.pos, player.radius) 
+    if player.hasProppelled:
+        propellerPos = pygame.Vector2(0, player.radius)
+        propellerPos.x = propellerPos.y * math.sin(player.rot)
+        propellerPos.y = propellerPos.y * math.cos(player.rot)
+        pygame.draw.circle(screen, "red", pygame.Vector2(player.pos + propellerPos), player.radius / 2)
     
     player.update(deltaTime)
     
@@ -173,13 +182,22 @@ while running:
             player.OnCollision(deltaTime)
             
             # handle friction
-            friction_constant = 5
+            friction_constant = 20
             dot = player.vel - (pygame.Vector2.dot(player.vel, line.normal) * line.normal)
             player.vel -= friction_constant * dot * deltaTime
             
+
+            
                 
-            if line == lines[safe]:
-                print("You win")
+            if line != lines[safe]:
+                print("Crashed")
+            else:
+            # check if win
+                perpVel = pygame.Vector2.dot(player.vel, line.normal) * line.normal
+                magnitude = perpVel.length()
+                if magnitude > 8e-15:
+                    print("hit too hard")
+                
         #pygame.draw.line(screen, "blue", line.GetMidpoint(), line.GetMidpoint() + (line.normal * 20))
         pygame.draw.polygon(screen, "white", [line.start, line.end, (line.end.x, 500), (line.start.x, 500)])
         if line == lines[safe]:
