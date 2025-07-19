@@ -56,6 +56,17 @@ class Rocket:
         
         if self.grounded:
             player.vel = lerp(player.vel, pygame.Vector2(0, 0), 0.99 * deltaTime)
+            
+    def reset(self):
+        self.pos = pygame.Vector2(250, 0)
+        self.vel = pygame.Vector2(0, 20)
+        self.acc = pygame.Vector2(0, 150)
+        self.collisionHandler = None
+        
+        self.fuel = 1
+        self.grounded = False
+        self.hasProppelled = False
+        
         
         
 
@@ -144,6 +155,7 @@ def checkCollision(line: Line, player: Rocket):
 running = True
 end = False
 win = False
+cooldown = 3.0
 
 player = Rocket(pygame.Vector2(250, 0), 0, pygame.Vector2(0, 20))
 lines = []
@@ -228,6 +240,23 @@ while running:
     
     if end:
         draw_end_screen(win)
+        cooldown -= deltaTime
+        if cooldown < 0:
+            cooldown = 3
+            player.reset()
+            end = False
+            win = False
+            
+            lines.clear()
+            lines.append(Line(pygame.Vector2(0, randint(300, 400)), pygame.Vector2(50, randint(300, 400))))
+
+            for i in range(50, 601, 50):
+                line = Line(pygame.Vector2(i, lines[-1].end.y), pygame.Vector2(i + 50, randint(300, 400)))
+                
+                lines.append(line)
+                
+            safe = randint(0, len(lines) - 1)
+            
             
     pygame.display.flip() #double buffer rendering, render back buffer
     
